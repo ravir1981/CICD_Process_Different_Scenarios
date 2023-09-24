@@ -1,0 +1,93 @@
+	1. Git Installation
+		a. yum install git
+		b. git --version
+		c. yum upgrade
+	2. Java Installation
+		a. sudo yum install java-11-amazon-corretto
+		b. java --version
+	3. Jenkins Installation
+		a. https://www.jenkins.io/doc/book/installing/linux/#red-hat-centos
+		b. sudo yum install jenkins
+		c. sudo wget -O /etc/yum.repos.d/jenkins.repo     https://pkg.jenkins.io/redhat-stable/jenkins.repo
+		d. sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+		e. sudo yum upgrade
+		f. sudo yum install jenkins -y
+		g. systemctl status jenkins
+		h. service status jenkins
+		i. systemctl start jenkins
+		j. cat /var/lib/jenkins/secrets/initialAdminPassword
+		k. jenkins --version
+		l. To check Jenkins Port
+			i. https://adamtheautomator.com/check-if-a-port-is-open-in-linux/
+			ii. netstat command, the -t flag instructs ss to display only TCP sockets, -u to display only UDP sockets, and -l to show only listening sockets. The -p flag indicates the process name or PID using the port.
+			iii. netstat -tulpn
+			root@ip-172-31-84-220:~# netstat -tulpn
+			Active Internet connections (only servers)
+			Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+			tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      649/sshd: /usr/sbin 
+			tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      382/systemd-resolve 
+			tcp6       0      0 :::38597                :::*                    LISTEN      429/java            
+			tcp6       0      0 :::22                   :::*                    LISTEN      649/sshd: /usr/sbin 
+			tcp6       0      0 :::8080                 :::*                    LISTEN      429/java            
+			udp        0      0 127.0.0.1:323           0.0.0.0:*                           504/chronyd         
+			udp        0      0 127.0.0.53:53           0.0.0.0:*                           382/systemd-resolve 
+			udp        0      0 172.31.84.220:68        0.0.0.0:*                           380/systemd-network 
+			udp6       0      0 ::1:323                 :::*                                504/chronyd      
+		m. How to change see the port in a file
+			i. -rw-r--r-- 1 root root 2830 Jun 28 11:23 /etc/default/jenkins   
+		n. To change java version
+			update-alternatives --config java
+			
+	4. Maven Installation
+		a. yum install maven
+		b. update-alternatives --config java
+		c. export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
+		d. export PATH=$JAVA_HOME/bin:$PATH
+		e. echo $JAVA_HOME
+		f. mvn -version
+	5. Another method for configuring maven for Amazon Linux
+		a. cd /opt
+		b. wget https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz
+		c. tar xvf apache-maven-3.9.4-bin.tar.gz
+		d. export PATH=$PATH:/opt/apache-maven-3.9.4/bin
+		e. mvn --version
+	6. Install jdk, jre and maven
+		a. apt update
+		b. apt install openjdk-11-jre
+		c. apt install openjdk-11-jdk
+		d. java --version
+		e. cd /opt
+		f. wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.0.1.46107.zip
+		g. unzip sonarqube-9.9.0.65466.zip
+		h. vi sonar.sh (change the user)
+		i. sh sonar.sh start
+		j. sh sonar.sh status
+		k. netstat -tnulp
+	7. How to generate sonarqube token
+	
+	Generate token from sonarqube so maven server can communicate with sonarqube
+	
+	f1965dbce767371cf8be14c9be35d60b7d15de65
+	
+	How to execute from mvn server:
+	
+	mvn sonar:sonar -Dsonar.host.url=http://34.227.30.240:9000 -Dsonar.login=f1965dbce767371cf8be14c9be35d60b7d15de65
+	
+	8. How to fix sonar plugin issue
+
+Fixing maven sonar integration plugin change in pom.xml
+	https://docs.sonarsource.com/sonarqube/latest/analyzing-source-code/scanners/sonarscanner-for-maven/
+change the sonar scanner to latest - 
+	https://mvnrepository.com/artifact/org.sonarsource.scanner.maven/sonar-maven-plugin
+
+<plugin>
+<groupId>org.sonarsource.scanner.maven</groupId>
+<artifactId>sonar-maven-plugin</artifactId>
+<version>3.9.1.2184</version>
+</plugin> 
+
+	
+	
+		
+		
+	

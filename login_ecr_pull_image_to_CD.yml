@@ -1,0 +1,10 @@
+---
+
+- hosts: appservers
+  tasks:
+    - name: Establish a connection with ECR
+      shell: aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo
+    - name: Pull the image from ECR to CD server
+      shell: docker pull 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo:18
+    - name: Run the container using Docker image
+      shell: docker run --name=springbootcontainer -p 8080:8080 --detach 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo:18

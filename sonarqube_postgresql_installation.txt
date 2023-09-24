@@ -1,0 +1,66 @@
+amazon-linux-extras list postgresql
+amazon-linux-extras install postgresql13 vim epel -y
+yum install -y postgresql-server postgresql-devel
+
+To initialize the database
+/usr/bin/postgresql-setup --initdb
+
+To enable and start
+
+systemctl enable postgresql
+systemctl start postgresql
+systemctl status postgresql
+
+id postgres
+su - postgres
+psql
+\password postgres
+create database sonarqubedb;
+create user sonaruser with encrypted password 'T0day@123';
+grant all privileges on datase sonarqubedb to sonaruser;
+\q
+exit
+
+systemctl restart postgresql
+
+---------------------------------
+Edit sonar.properties to provide user/password in /opt/sonarqube-9.0.1.46107/conf
+
+-	sonar.jdbc.username
+-	sonar.jdbc.password
+-	sonar.jdbc.url= <after localhost, provide database name>
+
+Need to change the authentication type -it's host based authentication
+
+- vi /var/lib/pgsql/data/pg_hba.conf
+- change the below line last column method from 'peer' to md5
+	local	all	all	peer
+- IPv4 local connection -> change address and method
+	0.0.0.0/0	md5
+
+stop postgresql and sonarqube
+------------------------------
+systemctl stop postgresql
+cd /opt/sonarqube-9.0.1.46107/bin/linux-x86-64
+sh sonar.sh stop
+
+start postgresql and sonarqube
+-------------------------------
+systemctl start postgresql
+cd /opt
+sh sonar.sh start
+sh sonar.sh status
+
+How to check sonarqube logs
+-------------------------------
+tail /opt/<sonar>/logs/sonar.*.log
+
+How to increase the virtual memory
+-------------------------------------
+sysctl vm.max_map_count
+sysctl vm.max_map_count=262144
+sysctl vm.max_map_count
+
+To make this change permanent, change the below file
+------------------------------------------------------
+ls /etc/sysctl.conf

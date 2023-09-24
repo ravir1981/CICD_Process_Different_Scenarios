@@ -1,0 +1,149 @@
+Entire CICD Project:
+=======================
+
+### Get ec2 amzlnx medium for Java, Git and Maven - Call this CI-server
+- Install Java 11
+	sudo yum install java-11-amazon-corretto-headless
+	java --version
+- Install git
+	yum install git -y
+- checkout project
+	git clone https://github.com/ravir1981/springboot-maven-micro.git
+- Install Maven
+	cd /opt
+	wget https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz
+	tar xvf apache-maven-3.9.4-bin.tar.gz
+	export PATH=$PATH:/opt/apache-maven-3.9.4/bin
+	mvn --version
+- Build the package
+	mvn clean package
+	
+### Get ec2 ubuntu medium for Sonarqube
+=========================================
+
+sonarqube runs with port 9000. So enable port 9000 in security group
+sonarqube shouldn't be started with root privilege so start with ubuntu
+apt update
+apt install openjdk-11-jre
+apt install openjdk-11-jdk
+java --version
+apt install unzip
+apt install net-tools
+cd /opt
+wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.0.1.46107.zip
+unzip sonarqube-9.9.0.65466.zip
+
+#### How to change user if sonarqube was installed as root user?
+chown ubuntu:ubuntu sonarqube-9.0.1.46107 -R
+vi sonar.sh (change the user)
+
+sh sonar.sh start
+sh sonar.sh status
+netstat -plunt | grep -i "listen"
+
+#### How to fix sonar plugin issue
+
+Fixing maven sonar integration plugin change in pom.xml
+	https://docs.sonarsource.com/sonarqube/latest/analyzing-source-code/scanners/sonarscanner-for-maven/
+change the sonar scanner to latest - 
+	https://mvnrepository.com/artifact/org.sonarsource.scanner.maven/sonar-maven-plugin
+
+<plugin>
+<groupId>org.sonarsource.scanner.maven</groupId>
+<artifactId>sonar-maven-plugin</artifactId>
+<version>3.9.1.2184</version>
+</plugin> 
+
+##### How to generate sonarqube token
+	
+Generate token from sonarqube so maven server can communicate with sonarqube
+	
+5b3dc74eda9ea8deff5da96c39fa137da31b8f4e
+	
+#### How to execute from mvn server:
+	
+mvn sonar:sonar -Dsonar.host.url=http://100.25.4.194:9000 -Dsonar.login=5b3dc74eda9ea8deff5da96c39fa137da31b8f4e
+499480343705903871804443d3713240cb280685
+
+##### Install Docker in CI-server
+===================================
+### This is needed to run the jar file, we need to create a docker file and build docker image 
+### and push the image to AWS ECR
+### when this happens, the artifact will be running
+### How to manually run the jar
+### java -jar <jar file>
+
+### create or verify if dockerfile is available
+### check the jar file name in the dockerfile and verify it's same you see under target folder
+### Make sure to change Dockerfile first line to this
+FROM openjdk:8
+
+ls -ltr /root/springboot-maven-micro/Dockerfile
+yum install docker
+
+### How to check jar file size in MB
+ls -l --block-size=M target/*.jar (or) ls -lh target/*.jar
+
+#### How to create a repository in AWS ECR (Elastic Container Registry)
+=========================================================================
+### Once the docker image is in ECR, any user can pull the image and run the application
+### For communication between CI-server and AWS ECR, we need either aws credential configured in CI-server or create a role
+### In this case, we use role
+- IAM
+	- Roles
+		- AWS service
+		- select EC2 from use case
+		- next
+		- search ec2container
+		- select AmazonEC2ContainerRegistryFullAccess
+		- next
+		- give role name as "ecr-ec2-role"
+		- create role
+- Attach this role to CI-server
+	- Select the instance, choose Actions->Security->Modify IAM role->select "ecr-ec2-role"->update IAM role
+	
+- Got ECR
+- Get started
+- Private
+- Provide repository name
+- Create Repository
+- Copy the URI -> 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo
+- Click on "View push commands"
+	- retrieve authentication
+	- build docker image
+	- tag your image
+	- docker push
+
+### Execute below command
+### https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-container-image.html
+
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 840667225127.dkr.ecr.us-east-1.amazonaws.com
+systemctl start docker
+systemctl status docker
+docker build -t hellojavarepo .
+docker image ls
+docker push 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo:latest
+
+######### CI Process Complete. Next CD process -> Need another instance
+
+#### CD-server Ubuntu - t2.micro
+==================
+##### Install Docker
+
+- apt update
+- apt install docker.io -y
+- systemctl start docker
+- systemctl status docker
+- apt install awscli
+- attach the same role created for CI-server. Because we need to run docker command.
+- aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 840667225127.dkr.ecr.us-east-1.amazonaws.com
+### Run docker container command. Container port is configured in <springboot-repor>/application.properties
+### Need to enable to port in CD server
+
+- docker container run --name=hellojavarepo -p 8080:8080 --detach 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo:latest
+- docker container ls
+- docker ps
+- 18.232.94.120:8080/course-svc/getAllDevopsTools
+
+- CD process complete
+================================================================================

@@ -1,0 +1,202 @@
+CI-Server - Amazon Linux Medium
+===================
+yum install git -y
+amazon-linux-extras install epel
+- Install Java 11
+	sudo yum install java-11-amazon-corretto-headless
+	java --version
+- Install git
+	yum install git -y
+- checkout project
+	git clone https://github.com/ravir1981/springboot-maven-micro.git
+- Install Maven
+	cd /opt
+	wget https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz
+	tar xvf apache-maven-3.9.4-bin.tar.gz
+	export PATH=$PATH:/opt/apache-maven-3.9.4/bin
+	mvn --version
+- Jenkins Installation
+		a. https://www.jenkins.io/doc/book/installing/linux/#red-hat-centos
+		b. sudo yum install jenkins
+		c. sudo wget -O /etc/yum.repos.d/jenkins.repo     https://pkg.jenkins.io/redhat-stable/jenkins.repo
+		d. sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+		e. sudo yum upgrade
+		f. sudo yum install jenkins -y
+		g. systemctl status jenkins
+		h. service status jenkins
+		i. systemctl start jenkins
+		j. cat /var/lib/jenkins/secrets/initialAdminPassword
+		k. jenkins --version
+		l. To check Jenkins Port
+			i. https://adamtheautomator.com/check-if-a-port-is-open-in-linux/
+			ii. netstat command, the -t flag instructs ss to display only TCP sockets, -u to display only UDP sockets, and -l to show only listening sockets. The -p flag indicates the process name or PID using the port.
+			iii. netstat -tulpn
+			root@ip-172-31-84-220:~# netstat -tulpn
+			Active Internet connections (only servers)
+			Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+			tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      649/sshd: /usr/sbin 
+			tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      382/systemd-resolve 
+			tcp6       0      0 :::38597                :::*                    LISTEN      429/java            
+			tcp6       0      0 :::22                   :::*                    LISTEN      649/sshd: /usr/sbin 
+			tcp6       0      0 :::8080                 :::*                    LISTEN      429/java            
+			udp        0      0 127.0.0.1:323           0.0.0.0:*                           504/chronyd         
+			udp        0      0 127.0.0.53:53           0.0.0.0:*                           382/systemd-resolve 
+			udp        0      0 172.31.84.220:68        0.0.0.0:*                           380/systemd-network 
+			udp6       0      0 ::1:323                 :::*                                504/chronyd      
+		m. How to change see the port in a file
+			i. -rw-r--r-- 1 root root 2830 Jun 28 11:23 /etc/default/jenkins   
+		n. To change java version
+			update-alternatives --config java
+- Install Docker
+    - yum install docker
+    - systemctl start docker
+    - systemctl enable docker
+	- systemctl status docker
+
+- Pipeline is created in CI-server
+- Add maven path
+- Install sonarqube scanner plugin
+- Sonar token needs to be added
+- select secret text -> enter generated token in secret text
+- manage jenkins -> system -> sonarqube url/credential created above -> save
+- https://www.jenkins.io/doc/pipeline/steps/sonar/
+### Create a webhook in sonarqube so code quality integration between jenkins and sonarqube is done and pipeline gets the notification
+### of sonarqube result
+- administration->webhook-> provide <jenkins server>/sonarqube-webhook/
+- http://100.25.151.57:8080/sonarqube-webhook/
+- http://54.167.172.157:8080/sonarqube-webhook/
+- create
+stage("Sonar Quality Check"){
+		    steps{
+		        script{
+		            withSonarQubeEnv(installationName: 'sonar-9', credentialsId: 'jenkins-sonar') {
+		                sh 'mvn sonar:sonar'
+                    }
+                    timeout(time: 1, unit: 'HOURS') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        }
+	    	        }
+	    	    }
+            }
+        }
+
+### Now build docker image using jenkins pipeline
+### https://hackernoon.com/how-to-make-docker-images-with-jenkins-pipelines-xsh3uza
+stage('Building the Image') {
+            steps {
+                script {
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
+                }
+            }
+        }
+        
+- start the docker
+- Jenkins Homepage > Manage Jenkins > Manage Plugins > Available -> Docker Pipeline
+- sudo chmod 666 /var/run/docker.sock
+- Edit the git Dockerfile to have "FROM openjdk:8"
+### we should see new docker image
+- docker image ls
+
+### Install aws credential plugin and amazon ecr, docker plugin in jenkins
+- create IAM user with access key and secret key
+AKIA4HO5L3QT7PGTQ3V4
+2Ph5FuOi0xGD1bWoVvIAHjkJdnFIHsiEWc+pBYW/
+- user -> jenkins-ecr-user
+
+### Use deploy the image to ECR from here
+https://hackernoon.com/how-to-make-docker-images-with-jenkins-pipelines-xsh3uza
+stage ('Deploy the Image to Amazon ECR') {
+            steps {
+                script {
+                    docker.withRegistry("http://" + registry, "ecr:us-east-1:" + registryCredential ) {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }
+
+###### Create SES setting
+- create user
+- create smtp configuration
+- jenkins-ses-user
+- AKIA4HO5L3QTTRABRTET
+- BNnD9VQlfxuzEblA3MiRemm0Izbzplf1xTVxXXkktx8b
+
+#### Configure above in Jenkins
+Configure system -> Use SMTP Authentication
+smtp endpoint -> email-smtp.us-east-1.amazonaws.com
+user - AKIA4HO5L3QTTRABRTET
+pass - BNnD9VQlfxuzEblA3MiRemm0Izbzplf1xTVxXXkktx8b
+smtp port -> 465
+select Use SSL and Use TLS
+provide Reply-To Address -> verified email
+
+post {
+        success {
+            mail bcc: '', body: 'Pipeline build successfully', cc: '', from: 'ravir81@gmail.com', replyTo: '', subject: 'The Pipeline success', to: 'ravir81@gmail.com'
+        }
+        failure {  
+            mail bcc: '', body: 'Pipeline build not success', cc: '', from: 'ravir81@gmail.com', replyTo: '', subject: 'The Pipeline failed', to: 'ravir81@gmail.com'
+         } 
+    }
+
+Sonar-server - Ubuntu Medium
+=============================
+
+- apt update
+- apt install docker.io
+- sudo docker container run --name=sonarqubecontainer -p 9000:9000 --detach sonarqube:latest
+- sudo docker container ls
+### Command to restart container
+- docker restart sonarqubecontainer
+- Enable the port 9000 in security group
+- Access the system using <publicip>:9000
+============================================================
+
+CD-Ansbile Method:
+======================
+### Both server should have be having passwordless authentication
+### Objective is to pull the image from ECR to CD server and run
+
+### Jenkins-server
+-	GIT
+- 	Maven
+- 	Jenkins
+### Install Ansible
+
+### Enable passwordless auth
+ssh-keygen -t rsa
+copy the pub key to CD-server authorized_keys
+ansible -m ping appservers
+
+cat loginecr.yml
+
+---
+
+- hosts: appservers
+  tasks:
+    - name: Establish a connection with ECR
+      shell: aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo
+    - name: Pull the image from ECR to CD server
+      shell: docker pull 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo:18
+    - name: Run the container using Docker image
+      shell: docker run --name=springbootcontainer -p 8080:8080 --detach 840667225127.dkr.ecr.us-east-1.amazonaws.com/hellojavarepo:18
+      
+amazon-linux-extras install ansible2 -y
+
+### CD-server (host server)
+- apt update
+- apt install pip
+- Python3 --version
+- pip install docker-py
+- apt install docker.io
+- apt install awscli
+
+### After the playbook executed on Jenkins server, there will be an image in CD-server and containter
+docker image ls
+docker container ls
+
+COMPLETE
+

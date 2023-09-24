@@ -1,0 +1,98 @@
+###### Jenkins Master Slave Integration
+
+	- Create a new EC2 instance with OS as Amazon linux 2
+	- Provide the security group rule 2 also.
+	- Connect to the instance and install following tools:
+	- Execute command to become root
+		○ sudo su -
+		○ Java:
+		○ sudo amazon-linux-extras install java-openjdk11 -y
+		○ GIT:
+		○ yum install git -y
+		○ Maven:
+		○ yum install maven -y
+	- Create a root directory
+		○ This directory will be used exclusively my Jenkisn master to place remote files and create job workspace
+		○ You need to create a directory and give read/write/execute access to it
+		○ Execute:
+		○ $ cd /tmp
+		○ $ mkdir jenkinsdir
+		○ The path of root directory will be /tmp/jenkinsdir
+		○ give read/write/execute access to the root directory
+		○ $ chmod -R 777 /tmp/jenkinsdir
+	- Setup on Jenkins master:
+		○ Go to manage jenkins → Configure system → Scroll down to jenkins location and change the Jenkisn URL to be the latest URL
+			§ http://3.83.166.189:8080/
+			§ Save the page
+
+		○ Master Manage jenkins
+			§ configure global security→ scroll down → Agents → select Random radio button
+			§ Save the page
+
+		○ Manage Jenkins – Manage nodes and Clouds
+			§ Click on + New node
+			§ Give node name: slave1
+			§ Select Permanent Agent
+			§ Click on create
+			§ Now give description : anything text
+			§ Number of executors: 1
+			§ Remote root directory: /tmp/jenkinsdir
+		
+			§ Labels : slave1
+			§ Usage : select second option from dropdown
+			§ Launch method: launch agents via ssh
+			§ Host : private ip address of slave machine
+			§ Add credentials.
+			§ Scroll down to Node properties
+			§ Select tool location:
+			§ Click on ADD
+			§ Now go to slave server and execute command
+			§ $ which git
+			§ Path of git will be 
+			§ /usr/bin/git
+			§ Now add Java Path
+			§ On slave execute :  alternatives --config java
+			§ Give number of version 11 java
+			§ Copy the path of verison 11
+			§ Go to jenkins and paste the path under manage Jenkins
+			§ Save
+		○ Manage Jenkins - Manage nodes and clouds
+			§ Check the status of slave1 or slave2
+			§ If in failed status, relaunch
+
+Pipeline Code:
+
+pipeline {
+    tools {
+        jdk 'myjava'
+        maven 'mymaven'
+    }   
+    agent {label 'slave1'}
+    
+    stages {
+        stage ('CloneRepo') {
+            steps {
+                git 'https://github.com/ravir1981/DevOpsCodeDemo.git'
+            }
+        }
+    
+        stage ('Compile Code') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+        stage ('Code Review') {
+            steps {
+                sh 'echo "Review the code"'
+                sh 'mvn pmd:pmd'
+            }
+        }
+        stage ('Package Code') {
+            steps {
+                sh 'echo "Package the code"'
+                sh 'mvn package'
+            }
+        }
+    }
+}
+

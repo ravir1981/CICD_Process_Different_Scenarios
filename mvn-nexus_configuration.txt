@@ -1,0 +1,74 @@
+Amazon Linux -> Java, Maven (one server) and Nexus deployment (second server)
+=================================================================================
+yum install java-1.8.0-openjdk-devel
+update-alternatives --config java
+file $(which java)
+file /etc/alternatives/java
+java -version
+cd /opt
+wget https://download.sonatype.com/nexus/3/nexus-3.60.0-02-unix.tar.gz
+tar -xvf nexus-3.60.0-02-unix.tar.gz
+chown ec2-user:ec2-user nexus-3.60.0-02 sonatype-work -R
+cd nexus-3.60.0-02/bin
+Edit the below file to have the non-root user id:
+==================================================
+vi nexus.rc
+
+/opt/nexus-3.60.0-02/bin/nexus start
+
+#### Port 8081 should be in LISTEN mode. If not, open the port in security group
+netstat -tnulp | grep "LISTEN"
+#### Java should be running with ec2-user
+ps -ef | grep java
+
+How to access nexus server:
+==============================
+- public ip of nexus server
+- port is always 8081
+- http://44.195.81.144:8081
+
+how to deploy directly to Nexus artifact:
+============================================
+https://www.baeldung.com/maven-deploy-nexus
+
+- Include the below in pom.xml
+- Include both release and snapshot repository url taken from nexus server
+- Change the name of the repository, id and url
+- Add the below in pom.xml file after Properties tag
+- In this example, pom.xml is in /root/springboot-maven-nexus-deploy
+- NOTE -> carefull. snapshot has to have snapshot url
+- NOTE -> carefull. release needs to have releases url
+
+<distributionManagement>
+   <snapshotRepository>
+      <id>nexus-snapshots</id>
+      <url>http://44.195.81.144:8081/repository/maven-snapshots</url>
+   </snapshotRepository>
+   <repository>
+      <id>nexus-releases</id>
+      <url>http://44.195.81.144:8081/repository/maven-releases</url>
+   </repository>
+</distributionManagement>
+
+- after this change, execute below command to package
+- mvn clean package
+- but mvn clean deploy will fail
+
+How to authorize mvn server to access nexus server:
+======================================================
+
+- Need to modify this file -> ls -ltr /opt/apache-maven-3.9.4/conf/settings.xml
+- take the below syntax from here -> https://www.baeldung.com/maven-deploy-nexus
+
+   <server>
+      <id>nexus-releases</id>
+      <username>admin</username>
+      <password>admin123</password>
+   </server>
+   <server>
+      <id>nexus-snapshots</id>
+      <username>admin</username>
+      <password>admin123</password>
+   </server>
+
+

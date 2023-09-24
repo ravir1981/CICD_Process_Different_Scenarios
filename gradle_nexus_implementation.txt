@@ -1,0 +1,109 @@
+Amazon Linux -> Java, Maven (one server) and Nexus deployment (second server)
+=================================================================================
+yum install java-1.8.0-openjdk-devel
+update-alternatives --config java
+file $(which java)
+file /etc/alternatives/java
+java -version
+cd /opt
+wget https://download.sonatype.com/nexus/3/nexus-3.60.0-02-unix.tar.gz
+tar -xvf nexus-3.60.0-02-unix.tar.gz
+chown ec2-user:ec2-user nexus-3.60.0-02 sonatype-work -R
+cd nexus-3.60.0-02/bin
+Edit the below file to have the non-root user id:
+==================================================
+vi nexus.rc
+
+/opt/nexus-3.60.0-02/bin/nexus start
+
+#### Port 8081 should be in LISTEN mode. If not, open the port in security group
+netstat -tnulp | grep "LISTEN"
+#### Java should be running with ec2-user
+ps -ef | grep java
+
+How to access nexus server:
+==============================
+- public ip of nexus server
+- port is always 8081
+- http://44.195.81.144:8081
+
+Second Server -> Install Java 8 and Gradle
+==============================================
+- yum install java-1.8.0-openjdk-devel
+### Get the gradle version from here
+### Gradle version 6 will support http and https
+### Gradle version support https
+- https://distfiles.macports.org/gradle/
+- cd /opt
+- wget https://distfiles.macports.org/gradle/gradle-6.8.3-bin.zip
+- unzip gradle-6.8.3-bin.zip
+- export PATH=$PATH:/opt/gradle-6.8.3/bin
+- gradle -version
+- cd /root/springboot-tomcat-gradle-war
+
+### Building gradle project command
+- gradle clean build
+
+### where is the artifact created?
+- cd /root/springboot-tomcat-gradle-war
+- ls -ltr build/libs/
+
+### How to publish gradle with nexus
+### Include the below line in /root/springboot-tomcat-gradle-war/build.gradle
+https://medium.com/@simionrazvan/how-to-create-a-gradle-library-and-publish-it-on-nexus-34be19b520aa
+
+id "maven-publish"
+
+- cd /root/springboot-tomcat-gradle-war
+- vi build.gradle
+- add the above line
+- save and exit
+### This will add the new plugin
+- gradle clean build
+
+### How to gradle publish to nexus?
+### Add the below config at the end build.gradle
+https://medium.com/@simionrazvan/how-to-create-a-gradle-library-and-publish-it-on-nexus-34be19b520aa
+
+publishing {
+publications {
+maven(MavenPublication) {
+        artifact bootJar
+        }
+}
+repositories {
+maven {
+        if(project.version.endsWith('-SNAPSHOT')) {
+                url "http://44.204.124.238:8081/repository/maven-snapshots/"
+        } else {
+                url "http://44.204.124.238:8081/repository/maven-releases/"
+        }
+credentials {
+username project.repoUser
+password project.repoPassword
+}}}}
+
+### Where is the user/password saved?
+### Create gradle.properties file to save the credentials
+
+cat gradle.properties 
+repoUser=admin
+repoPassword=admin123
+
+### How to publish?
+gradle publish
+
+#### How to download artifacts?
+- take the path value of jar file from nexus server
+com/example/springboot-tomcat-gradle-war/0.0.2/springboot-tomcat-gradle-war-0.0.2.jar
+- add the corresponding releases or snapshot url before the com
+http://44.204.124.238:8081/repository/maven-releases/com/example/springboot-tomcat-gradle-war/0.0.2/springboot-tomcat-gradle-war-0.0.2.jar
+
+- go to gradle server
+- execute the below command to download the jar file
+
+wget --user admin --password admin123 http://44.204.124.238:8081/repository/maven-releases/com/example/springboot-tomcat-gradle-war/0.0.2/springboot-tomcat-gradle-war-0.0.2.jar
+
+- Complete
+
+
