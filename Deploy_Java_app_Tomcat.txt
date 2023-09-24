@@ -1,0 +1,14 @@
+Create Jenkins Pipeline to Deploy JAVA Application on Tomcat Server
+===================================================================
+https://github.com/ravir1981/MavenBuild
+
+sudo apt update
+apt install default-jdk
+
+#### Install Jenkins Plugin
+
+Manage Jenkins -> Plugins -> Available -> Deploy to Container
+
+#### Install Tomcat on Ubuntu
+apt install tomcat9 tomcat9-admin
+ls -ltr /etc/tomcat9
